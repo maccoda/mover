@@ -9,5 +9,8 @@ fn main() {
     let mut file = File::open("db.json").expect("Unable to open db.json");
     file.read_to_string(&mut content)
         .expect("Unable to read db.json");
-    mover::start(serde_json::from_str(&content).expect("Unable to convert to type"))
+    mover::start(
+        serde_json::from_str(&content).expect("Unable to convert to type"),
+        &"127.0.0.1:5212".parse().unwrap(),
+    );
 }
