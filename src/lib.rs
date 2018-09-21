@@ -5,11 +5,11 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-use std::collections::HashMap;
-use serde_json::Value;
+use futures::Future;
 use hyper::server::{Http, Request, Response, Service};
 use hyper::{Method, StatusCode};
-use futures::Future;
+use serde_json::Value;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -22,7 +22,7 @@ struct UriPath {
 
 impl UriPath {
     fn new(path: &str) -> UriPath {
-        let parts = path.split("/").map(|x| x.to_owned()).collect();
+        let parts = path.split('/').map(|x| x.to_owned()).collect();
         UriPath { parts }
     }
 
@@ -58,28 +58,28 @@ impl Service for Server {
         println!("Received {} request for {}", req.method(), req.path());
 
         match req.method() {
-            &Method::Get => {
+            Method::Get => {
                 let path = UriPath::new(&req.path().chars().skip(1).collect::<String>());
                 let key = path.root();
                 let element = self.db.0.get(key).expect("Key not in database");
                 let result = if path.len() > 1 {
-                    let id: usize = path.part(1)
+                    let id: usize = path
+                        .part(1)
                         .parse()
                         .expect("Second path element is not a number");
                     &element
                         .as_array()
                         .expect("Not an array")
                         .iter()
-                        .filter(|x| {
+                        .find(|x| {
                             x.as_object()
                                 .expect("Not an object")
                                 .get("id")
                                 .expect("No ID field found")
                                 .as_u64()
-                                .expect("ID not u64") == id as u64
-                        })
-                        .next()
-                        .expect("No matching ID")
+                                .expect("ID not u64")
+                                == id as u64
+                        }).expect("No matching ID")
                 } else {
                     element
                 };
@@ -88,20 +88,20 @@ impl Service for Server {
                     serde_json::to_string(result).expect("Failed to convert JSON to string"),
                 );
             }
-            &Method::Post => {
+            Method::Post => {
                 // need to add the posting
             }
             _ => {
                 response.set_status(StatusCode::NotFound);
             }
         };
-
+        let response = response.with_header(hyper::header::ContentType::json());
         Box::new(futures::future::ok(response))
     }
 }
 
 pub fn start(db: Database, addr: &SocketAddr) {
-    println!("{:?}", db);
+    println!("{:#?}", db);
     let server = Http::new()
         .bind(&addr, move || Ok(Server { db: db.clone() }))
         .unwrap();
