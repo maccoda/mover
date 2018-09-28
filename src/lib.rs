@@ -9,38 +9,25 @@ use futures::Future;
 use hyper::server::{Http, Request, Response, Service};
 use hyper::{Method, StatusCode};
 use serde_json::Value;
-use std::collections::HashMap;
+
 use std::net::SocketAddr;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Database(HashMap<String, Value>);
-
-#[derive(Debug)]
-struct UriPath {
-    parts: Vec<String>,
-}
-
-impl UriPath {
-    fn new(path: &str) -> UriPath {
-        let parts = path.split('/').map(|x| x.to_owned()).collect();
-        UriPath { parts }
-    }
-
-    fn root(&self) -> &str {
-        &self.parts[0]
-    }
-
-    fn part(&self, index: usize) -> &str {
-        &self.parts[index]
-    }
-
-    fn len(&self) -> usize {
-        self.parts.len()
-    }
-}
+mod db;
+mod uri;
+use db::Database;
+use uri::UriPath;
 
 struct Server {
-    db: Database,
+    db: db::Database,
+}
+
+fn build_path(req: &Request) -> UriPath {
+    let query = req.query().unwrap_or("");
+    UriPath::new(format!(
+        "{}?{}",
+        &req.path().chars().skip(1).collect::<String>(),
+        query
+    ))
 }
 
 impl Service for Server {
@@ -53,50 +40,59 @@ impl Service for Server {
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: Request) -> Self::Future {
-        let mut response = Response::new();
-
         println!("Received {} request for {}", req.method(), req.path());
 
-        match req.method() {
-            Method::Get => {
-                let path = UriPath::new(&req.path().chars().skip(1).collect::<String>());
-                let key = path.root();
-                let element = self.db.0.get(key).expect("Key not in database");
-                let result = if path.len() > 1 {
-                    let id: usize = path
-                        .part(1)
-                        .parse()
-                        .expect("Second path element is not a number");
-                    &element
-                        .as_array()
-                        .expect("Not an array")
-                        .iter()
-                        .find(|x| {
-                            x.as_object()
-                                .expect("Not an object")
-                                .get("id")
-                                .expect("No ID field found")
-                                .as_u64()
-                                .expect("ID not u64")
-                                == id as u64
-                        }).expect("No matching ID")
-                } else {
-                    element
-                };
-                println!("Retrieving for {:?}", key);
-                response.set_body(
-                    serde_json::to_string(result).expect("Failed to convert JSON to string"),
-                );
-            }
-            Method::Post => {
-                // need to add the posting
-            }
-            _ => {
-                response.set_status(StatusCode::NotFound);
-            }
+        let response = match req.method() {
+            Method::Get => retrieve_from_db(&req, &self.db),
+            _ => Response::new().with_status(StatusCode::NotFound),
         };
-        let response = response.with_header(hyper::header::ContentType::json());
         Box::new(futures::future::ok(response))
+    }
+}
+
+fn retrieve_from_db(req: &Request, db: &Database) -> Response {
+    let mut response = Response::new();
+    let path = build_path(req);
+    if let Some(return_data) = extract_data_from_db(&path, db) {
+        response.set_body(
+            serde_json::to_string(&return_data).expect("Failed to convert JSON to string"),
+        );
+    } else {
+        response.set_status(StatusCode::NotFound)
+    }
+    response.with_header(hyper::header::ContentType::json())
+}
+
+fn extract_data_from_db(path: &UriPath, db: &Database) -> Option<Value> {
+    let key = path.root();
+    if path.id_segment().is_some() {
+        db.find_with_id(key, path.id_segment().unwrap())
+    } else {
+        let mut value = db.get(key);
+        for (key, val) in path.query_params() {
+            value = value.map(|x| filter_json_array(&x, key, val));
+        }
+        value
+    }
+}
+
+fn filter_json_array(arr: &Value, filter_key: &str, filter_value: &str) -> Value {
+    if arr.is_array() {
+        let arr = arr.as_array().expect("Can only filter on an array");
+        let vec_vals: Vec<Value> = arr
+            .into_iter()
+            .filter(|x| {
+                let object_value = x.as_object().expect("Not an object").get(filter_key);
+                if let Some(key) = object_value {
+                    key == filter_value
+                } else {
+                    true
+                }
+            }).map(|x| x.to_owned())
+            .collect();
+        Value::Array(vec_vals)
+    } else {
+        arr.to_owned()
     }
 }
 

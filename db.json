@@ -1,5 +1,12 @@
 {
-  "posts": [{ "id": 1, "title": "mover", "author": "maccoda" }],
+  "posts": [
+    { "id": 1, "title": "mover", "author": "maccoda" },
+    {
+      "id": 2,
+      "title": "web stuff",
+      "author": "bob"
+    }
+  ],
   "comments": [{ "id": 1, "body": "some comment", "postId": 1 }],
   "profile": { "name": "maccoda" }
 }
