@@ -1,6 +1,6 @@
 # Mover
 
-[![Build Status](https://example.gitlab.com/maccoda/mover/badges/main/pipeline.svg)
+![Build Status](https://gitlab.com/maccoda/mover/badges/main/pipeline.svg)
 
 **Mo**ck ser**ver** with minimal configuration with rapid prototyping.
 
