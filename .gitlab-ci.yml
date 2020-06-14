@@ -4,11 +4,10 @@ stages:
     - build
     - docs
 
- before_script:
+before_script:
    - apt-get update -yqq
    - apt-get install -yqq --no-install-recommends build-essential libssl-dev pkg-config
 
-# Use cargo to test the project
 test:cargo:
   stage: build
   script:
@@ -21,7 +20,6 @@ pages:
   - cargo install mdbook
   - export PATH=$(pwd)/bin:$HOME/.cargo/bin:$PATH
   - mdbook build -d ../public user_guide
-
   artifacts:
     paths:
     - public
