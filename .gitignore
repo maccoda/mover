@@ -5,3 +5,5 @@ Cargo.lock
 
 .vscode/
 .idea/
+
+user_guide/book

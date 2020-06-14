@@ -13,9 +13,9 @@ Clone the repository.
 
 Build the binary.
 
-```
-$ cargo build --release
-$ ls target/release
+```shell
+> cargo build --release
+> ls target/release
 ```
 
 ## Usage
@@ -26,10 +26,10 @@ resources that will be mocked.
 Once the configuration file has been created run the binary. It will look for
 the `db.json` file and begin the server.
 
-```
-$ ls
+```shell
+> ls
 db.json
-$ mover
+> mover
 Listening on 127.0.0.1:5212
 ```
 
