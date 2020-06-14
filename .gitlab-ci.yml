@@ -1,5 +1,8 @@
 image: "rust:latest"
 
+stages:
+    - build
+    - docs
 
  before_script:
    - apt-get update -yqq
@@ -10,3 +13,14 @@ test:cargo:
   script:
     - rustc --version && cargo --version  # Print version info for debugging
     - cargo test --workspace --verbose
+
+pages:
+  stage: docs
+  script:
+  - cargo install mdbook
+  - export PATH=$(pwd)/bin:$HOME/.cargo/bin:$PATH
+  - mdbook build -d ../public user_guide
+
+  artifacts:
+    paths:
+    - public
