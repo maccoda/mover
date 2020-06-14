@@ -10,6 +10,7 @@ stages:
 
 # Use cargo to test the project
 test:cargo:
+  stage: build
   script:
     - rustc --version && cargo --version  # Print version info for debugging
     - cargo test --workspace --verbose
