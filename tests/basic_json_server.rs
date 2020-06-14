@@ -6,10 +6,10 @@ extern crate serde_json;
 
 use reqwest::{Response, Url};
 use serde_json::Value;
-use std::sync::{Once, ONCE_INIT};
+use std::sync::Once;
 use std::thread;
 
-static START: Once = ONCE_INIT;
+static START: Once = Once::new();
 
 fn serve() {
     let db = serde_json::from_value(json!(

@@ -10,7 +10,7 @@ fn main() {
     file.read_to_string(&mut content)
         .expect("Unable to read db.json");
     mover::start(
-        serde_json::from_str(&content).expect("Unable to convert to type"),
+        serde_json::from_str(&content).expect("Failed to parse database JSON"),
         &"127.0.0.1:5212".parse().unwrap(),
     );
 }

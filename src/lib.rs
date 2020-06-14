@@ -21,15 +21,6 @@ struct Server {
     db: db::Database,
 }
 
-fn build_path(req: &Request) -> UriPath {
-    let query = req.query().unwrap_or("");
-    UriPath::new(format!(
-        "{}?{}",
-        &req.path().chars().skip(1).collect::<String>(),
-        query
-    ))
-}
-
 impl Service for Server {
     // boilerplate hooking up hyper's server types
     type Request = Request;
@@ -37,14 +28,14 @@ impl Service for Server {
     type Error = hyper::Error;
     // The future representing the eventual Response your call will
     // resolve to. This can change to whatever Future you need.
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: Request) -> Self::Future {
         println!("Received {} request for {}", req.method(), req.path());
 
         let response = match req.method() {
             Method::Get => retrieve_from_db(&req, &self.db),
-            _ => Response::new().with_status(StatusCode::NotFound),
+            _ => Response::new().with_status(StatusCode::MethodNotAllowed),
         };
         Box::new(futures::future::ok(response))
     }
@@ -52,7 +43,7 @@ impl Service for Server {
 
 fn retrieve_from_db(req: &Request, db: &Database) -> Response {
     let mut response = Response::new();
-    let path = build_path(req);
+    let path = UriPath::from(req);
     if let Some(return_data) = extract_data_from_db(&path, db) {
         response.set_body(
             serde_json::to_string(&return_data).expect("Failed to convert JSON to string"),
@@ -77,8 +68,7 @@ fn extract_data_from_db(path: &UriPath, db: &Database) -> Option<Value> {
 }
 
 fn filter_json_array(arr: &Value, filter_key: &str, filter_value: &str) -> Value {
-    if arr.is_array() {
-        let arr = arr.as_array().expect("Can only filter on an array");
+    if let Some(arr) = arr.as_array() {
         let vec_vals: Vec<Value> = arr
             .into_iter()
             .filter(|x| {
@@ -97,11 +87,10 @@ fn filter_json_array(arr: &Value, filter_key: &str, filter_value: &str) -> Value
 }
 
 pub fn start(db: Database, addr: &SocketAddr) {
-    println!("{:#?}", db);
     let server = Http::new()
         .bind(&addr, move || Ok(Server { db: db.clone() }))
         .unwrap();
     let socket_addr = server.local_addr().unwrap();
-    println!("Listening on {:?}", socket_addr);
+    println!("Listening on {}", socket_addr);
     server.run().unwrap();
 }
