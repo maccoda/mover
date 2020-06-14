@@ -37,7 +37,7 @@ fn get_request(path: &str) -> Response {
 
 fn json_get_request(path: &str) -> Value {
     let req = get_request(path);
-    assert_eq!(req.status(), reqwest::StatusCode::Ok);
+    assert_eq!(req.status(), reqwest::StatusCode::OK);
     let mut req = req;
     req.json().expect("Failed to decode response")
 }
@@ -115,12 +115,12 @@ fn query_parameter_get_on_singular_item_should_be_ignored() {
 fn not_found_for_unknown_path() {
     serve();
     let actual = get_request("unknown");
-    assert_eq!(actual.status(), reqwest::StatusCode::NotFound);
+    assert_eq!(actual.status(), reqwest::StatusCode::NOT_FOUND);
 }
 
 #[test]
 fn not_found_for_not_present_id() {
     serve();
     let actual = get_request("posts/123");
-    assert_eq!(actual.status(), reqwest::StatusCode::NotFound);
+    assert_eq!(actual.status(), reqwest::StatusCode::NOT_FOUND);
 }
